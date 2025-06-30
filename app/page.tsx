@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const home = () => {
+const Home = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -14,17 +14,49 @@ const home = () => {
     feedback: '',
   });
 
-
-
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setFormErrors(prev => ({ ...prev, [name]: '' })); // clear error on change
+  };
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+
+    if (!formData.firstName.trim()) errors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
+
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Email is invalid';
+    }
+
+    // ✅ Mobile validation
+    if (!formData.mobile.trim()) {
+      errors.mobile = 'Mobile number is required';
+    } else if (formData.mobile.length !== 10) {
+      errors.mobile = 'Mobile number must be exactly 10 digits';
+    }
+
+    if (!formData.service) errors.service = 'Please select a service';
+    if (!formData.contactType) errors.contactType = 'Please select a contact method';
+    if (!formData.feedback.trim()) errors.feedback = 'Feedback is required';
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const isValid = validateForm();
+    if (!isValid) return;
 
     try {
       const res = await fetch('/api/contact', {
@@ -55,17 +87,22 @@ const home = () => {
 
   useEffect(() => {
     if (showSuccess) {
-      const timer = setTimeout(() => setShowSuccess(false), 1000);
+      const timer = setTimeout(() => setShowSuccess(false), 1500);
       return () => clearTimeout(timer);
     }
   }, [showSuccess]);
+
+  const getInputStyle = (field: string, value: string) => {
+    if (formErrors[field]) return 'border-red-500';
+    if (value.trim()) return 'border-green-500';
+    return 'border-gray-300';
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
       <h2 className="text-2xl font-bold mb-6 text-center">Contact Us</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        
         <div className="flex flex-col sm:flex-row sm:space-x-4">
           <div className="w-full">
             <label className="block text-sm font-medium mb-1">First Name</label>
@@ -74,9 +111,14 @@ const home = () => {
               name="firstName"
               onChange={handleChange}
               value={formData.firstName}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
-              required
+              className={`w-full border rounded px-3 py-2 focus:outline-none focus:outline-blue-500   ${getInputStyle(
+                'firstName',
+                formData.firstName
+              )}`}
             />
+            {formErrors.firstName && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.firstName}</p>
+            )}
           </div>
           <div className="w-full">
             <label className="block text-sm font-medium mb-1">Last Name</label>
@@ -85,9 +127,14 @@ const home = () => {
               name="lastName"
               onChange={handleChange}
               value={formData.lastName}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
-              required
+              className={`w-full border rounded px-3 py-2 focus:outline-none focus:outline-blue-500  ${getInputStyle(
+                'lastName',
+                formData.lastName
+              )}`}
             />
+            {formErrors.lastName && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.lastName}</p>
+            )}
           </div>
         </div>
 
@@ -98,9 +145,12 @@ const home = () => {
             name="email"
             onChange={handleChange}
             value={formData.email}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
-            required
+            className={`w-full border rounded px-3 py-2 focus:outline-none   ${getInputStyle(
+              'email',
+              formData.email
+            )}`}
           />
+          {formErrors.email && <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>}
         </div>
 
         <div>
@@ -108,9 +158,20 @@ const home = () => {
           <input
             type="tel"
             name="mobile"
-            onChange={handleChange}
             value={formData.mobile}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300" required />
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, ''); // remove non-numeric
+              if (value.length <= 10) {
+                setFormData(prev => ({ ...prev, mobile: value }));
+                setFormErrors(prev => ({ ...prev, mobile: '' }));
+              }
+            }}
+            className={`w-full border rounded px-3 py-2 focus:outline-none focus:outline-blue-500  ${getInputStyle(
+              'mobile',
+              formData.mobile
+            )}`}
+          />
+          {formErrors.mobile && <p className="text-red-500 text-sm mt-1">{formErrors.mobile}</p>}
         </div>
 
         <div>
@@ -119,14 +180,17 @@ const home = () => {
             name="service"
             onChange={handleChange}
             value={formData.service}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
-            required
-          >
+            className={`w-full border rounded px-3 py-2 focus:outline-none focus:outline-blue-500  ${getInputStyle(
+              'service',
+              formData.service
+            )}`} >
+
             <option value="">-- Select --</option>
             <option value="web">Web Development</option>
             <option value="design">UI/UX Design</option>
             <option value="marketing">Digital Marketing</option>
           </select>
+          {formErrors.service && <p className="text-red-500 text-sm mt-1">{formErrors.service}</p>}
         </div>
 
         <div>
@@ -155,6 +219,9 @@ const home = () => {
               Phone
             </label>
           </div>
+          {formErrors.contactType && (
+            <p className="text-red-500 text-sm mt-1">{formErrors.contactType}</p>
+          )}
         </div>
 
         <div>
@@ -164,9 +231,15 @@ const home = () => {
             onChange={handleChange}
             value={formData.feedback}
             rows={4}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+            className={`w-full border rounded px-3 py-2 focus:outline-none focus:outline-blue-500  ${getInputStyle(
+              'feedback',
+              formData.feedback
+            )}`}
             placeholder="Share your feedback..."
           />
+          {formErrors.feedback && (
+            <p className="text-red-500 text-sm mt-1">{formErrors.feedback}</p>
+          )}
         </div>
 
         <div>
@@ -179,7 +252,6 @@ const home = () => {
         </div>
       </form>
 
-      {/* ✅ Show success message below the form */}
       <AnimatePresence>
         {showSuccess && (
           <motion.div
@@ -197,4 +269,4 @@ const home = () => {
   );
 };
 
-export default home;
+export default Home;
